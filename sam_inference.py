@@ -77,7 +77,51 @@ def draw_point_and_box(event, x, y, flags, param):
             # save points (x, y, x y)
             input_boxes.append([ix, iy, x, y])  
             cv2.imshow('Image', image)
-            
+
+def find_largest_and_best_boundingbox(mask):
+    # 채널 축 제거 (1, H, W) → (H, W)
+    mask = mask.squeeze(0).astype(np.uint8) * 255  # 0 또는 255로 변환
+
+    # 컨투어 탐색 (cv2.RETR_EXTERNAL: 외곽 컨투어만)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:  # 컨투어가 없을 경우
+        return None, None
+
+    # (1) 가장 큰 개별 contour 찾기
+    largest_contour = max(contours, key=cv2.contourArea)  # 면적 기준 최대 contour
+    largest_box = cv2.boundingRect(largest_contour)  # (x, y, width, height)
+
+    # (2) 모든 contour를 포함하는 box_best 찾기
+    all_points = np.concatenate(contours)  # 모든 컨투어 점들을 하나의 배열로 합침
+    best_box = cv2.boundingRect(all_points)  # 전체 컨투어 포함하는 박스
+
+    # Largest box 표시
+    cv2.rectangle(bb_copy, (largest_box[0], largest_box[1]),
+                            (largest_box[0]+largest_box[2], largest_box[1]+largest_box[3]), (0,0,255), 3)
+    # Best box 표시
+    cv2.rectangle(bb_copy, (best_box[0], best_box[1]),
+                            (best_box[0]+best_box[2], best_box[1]+best_box[3]), (255,0,0), 2)
+
+    # Convex hull 표시
+    all_hull_points = []
+    for contour in contours:
+        hull = cv2.convexHull(contour)
+        all_hull_points.extend(hull)  # 모든 Hull의 점들을 저장
+
+    # 모든 Convex Hull을 포함하는 최적의 바운딩 박스
+    all_hull_points = np.array(all_hull_points)
+    hull_bb = cv2.boundingRect(all_hull_points)
+    cv2.rectangle(bb_copy, (hull_bb[0], hull_bb[1]),
+                            (hull_bb[0]+hull_bb[2], hull_bb[1]+hull_bb[3]), (0,255,0), 1)
+
+    print(f"largest box[] = {largest_box} <- Red")
+    print(f"best box[] = {best_box} <- Blue")
+    print(f"hull_bb[] = {hull_bb} <- Green")
+    cv2.imshow('Largest box, best box and hull box', bb_copy)
+
+    return largest_box, best_box
+
 def main():
     # SAM 
     print('Loading Segment Anything Model...')
@@ -91,7 +135,7 @@ def main():
         print()
 
         # input image & callbacks
-        global image, point_mode, drawing_box, ix, iy, input_points, input_labels, input_boxes, image_copy, drawing
+        global image, point_mode, drawing_box, ix, iy, input_points, input_labels, input_boxes, image_copy, bb_copy, drawing
         
         image = cv2.imread(img_path)
         if image is None:
@@ -107,6 +151,7 @@ def main():
         input_labels = []
         input_boxes = []
         image_copy = image.copy()
+        bb_copy = image_copy.copy()
         
         predictor.set_image(image) 
         
@@ -201,7 +246,14 @@ def main():
                             point_labels=input_labels_sam,
                             box=input_boxes_sam,
                             multimask_output=False,)
-                        
+
+                        bb_copy = image_copy.copy()
+                        largest_bb, best_bb = find_largest_and_best_boundingbox(masks)
+
+                        if largest_bb == None or best_bb == None:
+                            print(f"largest_bb or best_bb is None")
+                            continue
+
                         plt.figure(num='Segmentation Result', figsize=(10, 10))
                         plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
                         show_mask(masks[0], plt.gca())
