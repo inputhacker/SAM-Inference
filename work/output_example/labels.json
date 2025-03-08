@@ -1,0 +1,57 @@
+{
+    "categories": [
+        {
+            "id": 1,
+            "name": "window"
+        },
+        {
+            "id": 2,
+            "name": "bird"
+        }
+    ],
+    "images": [
+        {
+            "id": 0,
+            "file_name": "car.jpg"
+        },
+        {
+            "id": 1,
+            "file_name": "bird.jpg"
+        }
+    ],
+    "annotations": [
+        {
+            "id": 0,
+            "image_id": 0,
+            "category_id": 1,
+            "bbox": [
+                100,
+                100,
+                100,
+                100
+            ]
+        },
+        {
+            "id": 1,
+            "image_id": 0,
+            "category_id": 1,
+            "bbox": [
+                250,
+                250,
+                100,
+                100
+            ]
+        },
+        {
+            "id": 2,
+            "image_id": 1,
+            "category_id": 2,
+            "bbox": [
+                173,
+                215,
+                127,
+                235
+            ]
+        }
+    ]
+}
